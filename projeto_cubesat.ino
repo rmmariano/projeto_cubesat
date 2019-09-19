@@ -10,17 +10,20 @@ int sensor_termico = A2;       // NTC
 int sensor_bateria = A3;       // Potenciômetro
 
 // indicadores (LEDs)
-int indicador_power = 2;
-int indicador_tx_telemetria = 3;
-int indicador_temp_high = 4;
-int indicador_sombra = 5;
-int indicador_sobrecarga = 6;
+int indicador_power = 2;          // branco
+int indicador_tx_telemetria = 3;  // azul
+int indicador_temp_high = 4;      // amarelo
+int indicador_sombra = 5;         // verde
+int indicador_sobrecarga = 6;     // vermelho
+
+// quantidade de tempo em ms que o indicador de power vai piscar
+int tempo_indicador_power_ms = 500;
 
 // telemetria
-int telemetria = 10; // buzzer
-int tempo_repetir_telemetria_ms = 30000; // 30000ms = 30s
+int telemetria = 9; // buzzer (pwn)
+int tempo_repetir_telemetria_ms = 10000; // 30000ms = 30s
 
-// tempo
+// tempo da última ocorrência
 int tempo_ultima_ocorrencia = millis();
 
 
@@ -28,9 +31,9 @@ void piscar_power_tres_vezes () {
   // (a) piscar o indicador de power 3 vezes
   for (int x=0; x<3; x++) {
     digitalWrite(indicador_power, HIGH);
-    delay(500);
+    delay(tempo_indicador_power_ms);
     digitalWrite(indicador_power, LOW);
-    delay(500);
+    delay(tempo_indicador_power_ms);
   }  
 }
 
@@ -48,7 +51,9 @@ void verificar_sensor_luminosidade () {
     Serial.println("Luminosidade menor do que 1000 Lux...");
   } else {
     digitalWrite(indicador_sombra, LOW);
-  }  
+  }
+
+  Serial.println();
 }
 
 void verificar_sensor_temperatura () {
@@ -67,12 +72,14 @@ void verificar_sensor_temperatura () {
     Serial.println("Temperatura maior do que 30°C, cuidado...");
   } else {
     digitalWrite(indicador_temp_high, LOW);
-  }  
+  }
+
+  Serial.println();
 }
 
 void verificar_sensor_bateria () {
-  // TODO: (b.3) enviar o consumo da bateria
-  int consumo_bateria = 0;
+  // (b.3) enviar o consumo da bateria (potenciomêtro)
+  int consumo_bateria = analogRead(sensor_bateria);
   Serial.println("Consumo da bateria: ");
   Serial.println(consumo_bateria);
 
@@ -83,12 +90,13 @@ void verificar_sensor_bateria () {
     Serial.println("Sobrecarga no consumo de bateria, cuidado...");
   } else {
     digitalWrite(indicador_sobrecarga, LOW);
-  }  
+  }
+
+  Serial.println();
 }
 
 void enviar_sinal_telemetria () {
-  // TODO: (c) 
-  // transmitir a cada 30s um sinal de telemetria
+  // (c) transmitir a cada 30s um sinal de telemetria
   int tempo_agora = millis();
 
   // verifica se já transcorreram 'tempo_ultima_ocorrencia'ms deste a última alteração
@@ -98,16 +106,18 @@ void enviar_sinal_telemetria () {
     noTone(telemetria);
     delay(500);
   
-    // ativar o led de telemetria e enviar um aviso pela porta serial
+    // ativar o led de telemetria (azul) e enviar um aviso pela porta serial
     digitalWrite(indicador_tx_telemetria, HIGH);
-    delay(100);
+    delay(1000);
     digitalWrite(indicador_tx_telemetria, LOW);
-    delay(100);
+    delay(1000);
     Serial.println("Enviando um sinal de telemetria...");
 
     // salva o tempo da ultima ocorrencia de telemetria
     tempo_ultima_ocorrencia = tempo_agora;
-  }  
+
+    Serial.println();
+  }
 }
 
 void setup () {
@@ -127,8 +137,10 @@ void setup () {
 }
 
 void loop () {
-  // verificar_sensor_luminosidade ();
+  // verificar_sensor_luminosidade ();  // ok
   // verificar_sensor_temperatura ();
-  // verificar_sensor_bateria ();
-  // enviar_sinal_telemetria ();
+  // verificar_sensor_bateria ();       // ok
+  // enviar_sinal_telemetria ();        // ok
+
+  delay(500);
 }
