@@ -120,23 +120,22 @@ void enviar_sinal_telemetria () {
 
   // verifica se já transcorreram 'tempo_ultima_ocorrencia'ms deste a última alteração
   if (tempo_passado >= tempo_repetir_telemetria_ms){
-    Serial.print("Tempo passado desde o último sinal de telemetria: ");
-    Serial.print(tempo_passado);
-    Serial.println("ms");
+    // Serial.print("Tempo passado desde o último sinal de telemetria: ");
+    // Serial.print(tempo_passado);
+    // Serial.println("ms");
 
-    // ativa e desativa o som do buzzer
+    // envia o sinal de telemetria (ativa o som do buzzer)
     tone(telemetria, 800);
-    delay(500);
-    noTone(telemetria);
-    delay(500);
-  
-    // ativar o led de telemetria (azul) e 
-    // enviar um aviso pela porta serial
+    // ativar o led de telemetria (azul)
     digitalWrite(indicador_tx_telemetria, HIGH);
-    delay(1000);
-    digitalWrite(indicador_tx_telemetria, LOW);
-    delay(1000);
+    // enviar um aviso pela porta serial
     Serial.println("Enviando um sinal de telemetria...");
+    
+    delay(500);
+
+    // desliga o som e o led    
+    noTone(telemetria);
+    digitalWrite(indicador_tx_telemetria, LOW);    
 
     // salva o tempo da ultima ocorrencia de telemetria
     tempo_ultima_ocorrencia = tempo_agora;
