@@ -4,9 +4,11 @@
  * Nome: Rodrigo M. Mariano
  */
 
+#include <Thermistor.h>
+
 // sensores
-int sensor_luminosidade = A1;  // LDR
-int sensor_termico = A2;       // NTC
+int sensor_luminosidade = A1;  // LDR      
+Thermistor sensor_termico(A5); // NTC
 int sensor_bateria = A3;       // Potenciômetro
 
 // indicadores (LEDs)
@@ -21,14 +23,19 @@ int tempo_indicador_power_ms = 500;
 
 // telemetria
 int telemetria = 9; // buzzer (pwn)
-int tempo_repetir_telemetria_ms = 10000; // 30000ms = 30s
+int tempo_repetir_telemetria_ms = 20000; // 20000ms = 20s
 
-// tempo da última ocorrência
+// tempo da última ocorrência (inicializa com o tempo de agora)
 int tempo_ultima_ocorrencia = millis();
+
+// tempo (ms) do delay para cada iteracao da função loop()
+int delay_iteracao = 1000;
 
 
 void piscar_power_tres_vezes () {
-  // (a) piscar o indicador de power 3 vezes
+  delay(1000);
+
+  // (a) piscar o indicador de power (branco) 3 vezes
   for (int x=0; x<3; x++) {
     digitalWrite(indicador_power, HIGH);
     delay(tempo_indicador_power_ms);
@@ -38,17 +45,17 @@ void piscar_power_tres_vezes () {
 }
 
 void verificar_sensor_luminosidade () {
-  // (b)
-  // (b.1)
-  int tensao_ldr = analogRead(sensor_luminosidade);
-  int lux = tensao_ldr * 1000;
+  // (b.1) enviar sensor de luminosidade usando a fórmula abaixo
+  long tensao_ldr = analogRead(sensor_luminosidade);
+  long lux = tensao_ldr * 1000;
   Serial.print("Lux: ");
   Serial.println(lux);
 
-  // (e) se a luminosidade for menor do que 1000 Lux, liga o led sombra
-  if (lux < 1000) {
+  // (e) se a luminosidade for menor do que 100.000 Lux, 
+  // liga o led sombra (verde)
+  if (lux < 100000) {
     digitalWrite(indicador_sombra, HIGH);
-    Serial.println("Luminosidade menor do que 1000 Lux...");
+    Serial.println("Luminosidade menor do que 100000 Lux...");
   } else {
     digitalWrite(indicador_sombra, LOW);
   }
@@ -57,19 +64,22 @@ void verificar_sensor_luminosidade () {
 }
 
 void verificar_sensor_temperatura () {
-  // TODO: (b.2) enviar o valor da temperatura
-  int graus_celsius = 0;
-  int graus_kelvin = 0;
-  Serial.println("Temperatura: ");
-  Serial.print("Celsius: ");
-  Serial.println(graus_celsius);
-  Serial.print("Kelvin: ");
-  Serial.println(graus_kelvin);
+  // (b.2) enviar o valor da temperatura em °C e °K
+  // pega a temperatura do sensor em °C e converte para °K
+  int graus_celsius = sensor_termico.getTemp();
+  int graus_kelvin = graus_celsius + 273.15;
 
-  // (d) se a temperatura for maior do que 30°C, liga o led de temperatura
-  if (graus_celsius > 30) {
+  Serial.print("Temperatura: ");
+  Serial.print(graus_celsius);
+  Serial.print("°C - ");
+  Serial.print(graus_kelvin);
+  Serial.println("°K");
+
+  // (d) se a temperatura for maior do que 26°C, 
+  // liga o led de temperatura (amarelo)
+  if (graus_celsius > 26) {
     digitalWrite(indicador_temp_high, HIGH);
-    Serial.println("Temperatura maior do que 30°C, cuidado...");
+    Serial.println("Temperatura maior do que 26°C, cuidado...");
   } else {
     digitalWrite(indicador_temp_high, LOW);
   }
@@ -80,11 +90,16 @@ void verificar_sensor_temperatura () {
 void verificar_sensor_bateria () {
   // (b.3) enviar o consumo da bateria (potenciomêtro)
   int consumo_bateria = analogRead(sensor_bateria);
-  Serial.println("Consumo da bateria: ");
-  Serial.println(consumo_bateria);
 
-  // (f) se o consumo de bateria for maior do que 150mA, liga o led
-  // sobrecarga e enviar um aviso
+  // mapeia de 0 de 1023 (sensor) para 0 a 200mA
+  consumo_bateria = map(consumo_bateria, 0, 1023, 0, 200);
+
+  Serial.print("Consumo da bateria: ");
+  Serial.print(consumo_bateria);
+  Serial.println("mA");
+
+  // (f) se o consumo de bateria for maior do que 150mA, 
+  // liga o led sobrecarga (vermelho) e enviar um aviso
   if (consumo_bateria > 150) {
     digitalWrite(indicador_sobrecarga, HIGH);
     Serial.println("Sobrecarga no consumo de bateria, cuidado...");
@@ -96,17 +111,27 @@ void verificar_sensor_bateria () {
 }
 
 void enviar_sinal_telemetria () {
-  // (c) transmitir a cada 30s um sinal de telemetria
+  // (c) transmitir a cada 20s um sinal de telemetria
+  // tempo atual no arduino
   int tempo_agora = millis();
 
+  // tempo passado desde o último sinal
+  int tempo_passado = tempo_agora - tempo_ultima_ocorrencia;
+
   // verifica se já transcorreram 'tempo_ultima_ocorrencia'ms deste a última alteração
-  if ((tempo_agora - tempo_ultima_ocorrencia) >= tempo_repetir_telemetria_ms){ 
+  if (tempo_passado >= tempo_repetir_telemetria_ms){
+    Serial.print("Tempo passado desde o último sinal de telemetria: ");
+    Serial.print(tempo_passado);
+    Serial.println("ms");
+
+    // ativa e desativa o som do buzzer
     tone(telemetria, 800);
     delay(500);
     noTone(telemetria);
     delay(500);
   
-    // ativar o led de telemetria (azul) e enviar um aviso pela porta serial
+    // ativar o led de telemetria (azul) e 
+    // enviar um aviso pela porta serial
     digitalWrite(indicador_tx_telemetria, HIGH);
     delay(1000);
     digitalWrite(indicador_tx_telemetria, LOW);
@@ -137,10 +162,12 @@ void setup () {
 }
 
 void loop () {
-  // verificar_sensor_luminosidade ();  // ok
-  // verificar_sensor_temperatura ();
-  // verificar_sensor_bateria ();       // ok
-  // enviar_sinal_telemetria ();        // ok
+  Serial.println("**************************************************\n");
 
-  delay(500);
+  verificar_sensor_luminosidade ();
+  verificar_sensor_temperatura ();
+  verificar_sensor_bateria ();
+  enviar_sinal_telemetria ();
+
+  delay(delay_iteracao);
 }
